@@ -1,5 +1,6 @@
 package RedisModel
 
+
 type RedisResponse struct {
 	Key     string `json:"key"`
 	Value   string `json:"value"`
@@ -8,9 +9,11 @@ type RedisResponse struct {
 }
 
 func NewRedisResponse(key string, value string, expTime string) *RedisResponse {
+
 	desc := value
-	if len(value) >= 47 {
-		desc = value[:47] + "..."
+	if len(value) >= 50 {
+		valueRune := []rune(value)
+		desc = string(valueRune[:50]) + "..."
 	} else {
 		desc = value
 	}

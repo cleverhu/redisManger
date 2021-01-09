@@ -5,7 +5,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"math"
 	"redisManger/src/dbs"
+	"redisManger/src/models/RedisConfigModel"
 	"redisManger/src/models/RedisModel"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,7 +23,7 @@ func GET(ctx *gin.Context) {
 	sizeInt, _ := strconv.ParseInt(size, 10, 64)
 
 LABEL:
-	scan := dbs.Rds.Scan(uint64(cursorInt), search+"*", sizeInt)
+	scan := dbs.Rds.Scan(uint64(cursorInt), "*"+search+"*", sizeInt)
 
 	keys, nextCursor := scan.Val()
 	m := &sync.Map{}
@@ -39,6 +41,7 @@ LABEL:
 		} else {
 			expTime = fmt.Sprintf("%.0f", exp.Seconds())
 		}
+		//value = decode.UnicodeToUTF8(value.(string))
 
 		r := RedisModel.NewRedisResponse(key.(string), value.(string), expTime)
 		res = append(res, r)
@@ -82,4 +85,33 @@ func ADD(ctx *gin.Context) {
 	}
 	ctx.JSON(200, gin.H{"message": "success"})
 
+}
+
+func Config(ctx *gin.Context) {
+
+	values := dbs.Rds.ConfigGet("*").Val()
+	//data key value
+	var keys []string
+	var cfs []*RedisConfigModel.Config
+	m := make(map[string]string, 0)
+	for i := 0; i < len(values); i += 2 {
+		key := values[i].(string)
+		value := values[i+1].(string)
+		keys = append(keys, key)
+		m[key] = value
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		c := RedisConfigModel.NewConfig(k, m[k])
+		cfs = append(cfs, c)
+		//}
+	}
+
+	ctx.JSON(200, gin.H{"config": cfs})
+}
+
+func UpdateConfig(ctx *gin.Context){
+	ctx.ShouldBindJSON()
 }
