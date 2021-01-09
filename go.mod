@@ -10,4 +10,5 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.4 // indirect
+	gopkg.in/yaml.v2 v2.3.0
 )

@@ -1,10 +1,19 @@
 package RedisModel
 
 type RedisResponse struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+	ExpTime string `json:"exp"`
+	Desc    string `json:"desc"`
 }
 
-func NewRedisResponse(key string, value string) *RedisResponse {
-	return &RedisResponse{Key: key, Value: value}
+func NewRedisResponse(key string, value string, expTime string) *RedisResponse {
+	desc := value
+	if len(value) >= 47 {
+		desc = value[:47] + "..."
+	} else {
+		desc = value
+	}
+
+	return &RedisResponse{Key: key, Value: value, ExpTime: expTime, Desc: desc}
 }

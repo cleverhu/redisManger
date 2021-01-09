@@ -1,20 +1,26 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"math"
 	"redisManger/src/dbs"
 	"redisManger/src/models/RedisModel"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 )
 
 func GET(ctx *gin.Context) {
 	search := ctx.DefaultQuery("search", "")
 	cursor := ctx.DefaultQuery("cursor", "0")
-	size := ctx.DefaultQuery("size", "100")
+	size := ctx.DefaultQuery("size", "20")
 
 	cursorInt, _ := strconv.ParseInt(cursor, 10, 64)
 	sizeInt, _ := strconv.ParseInt(size, 10, 64)
+
+LABEL:
 	scan := dbs.Rds.Scan(uint64(cursorInt), search+"*", sizeInt)
 
 	keys, nextCursor := scan.Val()
@@ -25,10 +31,55 @@ func GET(ctx *gin.Context) {
 	var res []*RedisModel.RedisResponse
 
 	m.Range(func(key, value interface{}) bool {
-		r := RedisModel.NewRedisResponse(key.(string), value.(string))
+		exp := dbs.Rds.TTL(key.(string)).Val()
+		//fmt.Println(exp)
+		expTime := ""
+		if exp.Seconds() < 0 {
+			expTime = "-"
+		} else {
+			expTime = fmt.Sprintf("%.0f", exp.Seconds())
+		}
+
+		r := RedisModel.NewRedisResponse(key.(string), value.(string), expTime)
 		res = append(res, r)
 		return true
 	})
+	//fmt.Println(res, nextCursor)
+	if res == nil && nextCursor != 0 {
+		cursorInt = int64(nextCursor)
+		goto LABEL
+	}
 
-	ctx.JSON(200, gin.H{"data": res, "nextCursor": nextCursor})
+	ctx.JSON(200, gin.H{"data": res, "next": nextCursor, "current": cursor})
+}
+
+func DEL(ctx *gin.Context) {
+	id := ctx.Param("id")
+	s := strings.Split(id, ":")
+	for i := 0; i < len(s); i++ {
+		dbs.Rds.Del(s[i])
+	}
+	ctx.JSON(200, gin.H{"message": "success"})
+}
+
+func ADD(ctx *gin.Context) {
+	type form struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+		Exp   int    `json:"exp"`
+	}
+	f := &form{}
+	err := ctx.ShouldBindJSON(&f)
+
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "fail"})
+		return
+	}
+	err = dbs.Rds.Set(f.Key, f.Value, time.Duration(int64(f.Exp)*int64(math.Pow10(9)))).Err()
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "fail"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "success"})
+
 }
