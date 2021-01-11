@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"math/rand"
+	"redisManger/src/common"
 	"redisManger/src/dbs"
 	"redisManger/src/handlers"
 	"redisManger/src/utils/myHttp"
@@ -18,21 +18,57 @@ func main() {
 	//insertData()
 	//return
 	r := gin.New()
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true                                                                                                 //允许所有域名
-	config.AllowMethods = []string{"GET", "POST", "OPTIONS", "PUT", "DELETE"}                                                     //允许请求的方法
-	config.AllowHeaders = []string{"tus-resumable", "upload-length", "upload-metadata", "cache-control", "x-requested-with", "*"} //允许的Header
-	r.Use(cors.New(config))
+	r.Use(common.Cors())
+	r.Use(common.Auth())
 
-	r.GET("/redis", handlers.GET)
+	{
+		str := r.Group("/string")
+		str.GET("/scan", handlers.Scan)
+		str.DELETE("/:keys", handlers.DelByKeys)
+		str.POST("/", handlers.StringUpdate)
+	}
 
-	r.DELETE("/redis/:id", handlers.DEL)
+	{
+		list := r.Group("/list")
+		list.GET("/scan", handlers.Scan)
+		list.GET("/get/:key", handlers.ListGetByKey)
+		list.DELETE("/:keys", handlers.DelByKeys)
 
-	r.POST("/redis", handlers.ADD)
+		list.POST("/", handlers.ListPost)
 
-	r.GET("/redis/config", handlers.Config)
+		list.GET("/exists/:key", handlers.ListExists)
 
-	r.POST("/redis/config", handlers.UpdateConfig)
+		list.POST("/remove", handlers.ListRemoveValue)
+		list.POST("/insert", handlers.ListInsert)
+	}
+
+	{
+		cfg := r.Group("/config")
+		cfg.GET("/", handlers.Config)
+		cfg.POST("/", handlers.UpdateConfig)
+	}
+
+	r.GET("/info/", handlers.Info)
+
+	{
+		user := r.Group("/user")
+		user.POST("/login", handlers.Login)
+		user.POST("/check", handlers.Validate)
+	}
+
+	{
+		connect := r.Group("/connect")
+
+		connect.POST("/test", handlers.ConnectTest)
+
+		connect.POST("/save", handlers.ConnectSave)
+		connect.GET("/get", handlers.ConnectGet)
+	}
+
+	{
+		logs :=r.Group("logs",handlers.LogsGet)
+		logs.GET("/")
+	}
 
 	log.Fatal(r.Run(":80"))
 
@@ -66,7 +102,8 @@ func insertData() {
 			for _, v := range d {
 				//	fmt.Println(v)
 				m := v.(map[string]interface{})
-				k := m["id"].(string)
+
+				k := "list_" + m["id"].(string)
 				//title := decode.UnicodeToUTF8(m["title"].(string))
 				////fmt.Println(k, title)
 				//desc := decode.UnicodeToUTF8(m["description"].(string))
@@ -77,10 +114,18 @@ func insertData() {
 					Description: m["description"].(string),
 					Url:         m["url"].(string),
 				}
-				data, _ := json.Marshal(r)
+				//data, _ := json.Marshal(r)
 
 				rand.Seed(time.Now().UnixNano())
-				dbs.Rds.Set(k, string(data), time.Duration(rand.Int63()))
+				//dbs.Rds.Set(k, string(data), time.Duration(rand.Int63()))
+				for key, value := range m {
+					dbs.Rds.RPush(r.Id, fmt.Sprintf("%v:%v", key, value))
+				}
+				//dbs.Rds.RPush(k, r.Title)
+				//dbs.Rds.RPush(k, r.Description)
+				//dbs.Rds.RPush(k, r.Url)
+
+				dbs.Rds.Expire(k, time.Duration(rand.Int63()))
 			}
 		}
 
