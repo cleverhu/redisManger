@@ -26,6 +26,8 @@ func main() {
 		str.GET("/scan", handlers.Scan)
 		str.DELETE("/:keys", handlers.DelByKeys)
 		str.POST("/", handlers.StringUpdate)
+
+		str.GET("/toFile", handlers.ToFile)
 	}
 
 	{

@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"crypto/md5"
+	"errors"
 	"fmt"
+	"github.com/360EntSecGroup-Skylar/excelize/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"github.com/jinzhu/gorm"
@@ -154,6 +156,50 @@ func StringUpdate(ctx *gin.Context) {
 	}
 	ctx.JSON(200, gin.H{"message": "添加成功"})
 
+}
+
+func ToFile(ctx *gin.Context) {
+
+	m := sync.Map{}
+	var cursor uint64
+	var result = make([]string, 0)
+	var err = errors.New("")
+	for true {
+
+		result, cursor, err = rds.Scan(cursor, "*", 100).Result()
+		if err != nil {
+			ctx.JSON(400, gin.H{"message": "导出失败"})
+			return
+		}
+
+		for _, v := range result {
+			if rds.Type(v).Val() == "string" {
+				m.Store(v, rds.Get(v))
+			}
+		}
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	f := excelize.NewFile()
+	_ = f.SetCellValue("Sheet1", "A1", "key")
+	_ = f.SetCellValue("Sheet1", "B1", "value")
+	var i = 2
+	m.Range(func(key, value interface{}) bool {
+		_ = f.SetCellValue("Sheet1", "A"+fmt.Sprintf("%d", i), value)
+		_ = f.SetCellValue("Sheet1", "B"+fmt.Sprintf("%d", i), value)
+		i++
+		return true
+	})
+	fileName := time.Now().Format("2006-01-02_15:04:05_string导出记录") + ".xlsx"
+	err = f.SaveAs("/home/admin/mynginx/html/excels/" + fileName)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "导出失败"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://m.deeplythink.com/excels/" + fileName}})
 }
 
 func ListGetByKey(ctx *gin.Context) {
