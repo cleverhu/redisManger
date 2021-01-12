@@ -20,14 +20,10 @@ func NewStringModel(key string, value string, expTime string) *StringModel {
 	return &StringModel{Key: key, Value: value, ExpTime: expTime, Desc: desc}
 }
 
-type ListModel struct {
+type CommonModel struct {
 	Key     string `json:"key"`
 	Length  int64  `json:"len"`
 	ExpTime string `json:"exp"`
-}
-
-func NewListModel(key string, length int64, expTime string) *ListModel {
-	return &ListModel{Key: key, Length: length, ExpTime: expTime}
 }
 
 type ListValueModel struct {
@@ -36,25 +32,13 @@ type ListValueModel struct {
 	Index int64  `json:"index"`
 }
 
-func NewListValueModel(key string, value string, index int64) *ListValueModel {
-	return &ListValueModel{Key: key, Value: value, Index: index}
-}
-
-type SetModel struct {
-	Key     string `json:"key"`
-	Length  int64  `json:"len"`
-	ExpTime string `json:"exp"`
-}
-
-func NewSetModel(key string, length int64, expTime string) *SetModel {
-	return &SetModel{Key: key, Length: length, ExpTime: expTime}
-}
-
 type SetValueModel struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
-func NewSetValueModel(key string, value string, index int64) *SetValueModel {
-	return &SetValueModel{Key: key, Value: value}
+type HashValueModel struct {
+	Key   string `json:"key"`
+	Field string `json:"field"`
+	Value string `json:"value"`
 }

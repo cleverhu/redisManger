@@ -31,7 +31,7 @@ func init() {
 
 func Scan(ctx *gin.Context) {
 	method := strings.ToLower(ctx.DefaultQuery("method", ""))
-	if method != "string" && method != "list" && method != "set" {
+	if method != "string" && method != "list" && method != "hash" && method != "set" {
 		ctx.JSON(400, gin.H{"message": "search error"})
 		return
 	}
@@ -44,8 +44,8 @@ func Scan(ctx *gin.Context) {
 	sizeInt, _ := strconv.ParseInt(size, 10, 64)
 
 	var stringRes []*RedisModel.StringModel
-	var listRes []*RedisModel.ListModel
-	var setRes []*RedisModel.SetModel
+	var commonRes []*RedisModel.CommonModel
+
 LABEL:
 	scan := rds.Scan(uint64(cursorInt), "*"+search+"*", sizeInt)
 
@@ -57,55 +57,54 @@ LABEL:
 	}
 
 	m.Range(func(key, value interface{}) bool {
+		exp := rds.TTL(key.(string)).Val()
+		expTime := ""
+		if exp.Seconds() < 0 {
+			expTime = "-"
+		} else {
+			expTime = fmt.Sprintf("%.0f", exp.Seconds())
+		}
+
 		t := rds.Type(key.(string)).Val()
 		if t == method {
 			switch t {
 			case "string":
-				exp := rds.TTL(key.(string)).Val()
-				expTime := ""
-				if exp.Seconds() < 0 {
-					expTime = "-"
-				} else {
-					expTime = fmt.Sprintf("%.0f", exp.Seconds())
-				}
-
 				r := RedisModel.NewStringModel(key.(string), rds.Get(key.(string)).Val(), expTime)
 				stringRes = append(stringRes, r)
 			case "list":
-				exp := rds.TTL(key.(string)).Val()
-				expTime := ""
-				if exp.Seconds() < 0 {
-					expTime = "-"
-				} else {
-					expTime = fmt.Sprintf("%.0f", exp.Seconds())
+				c := &RedisModel.CommonModel{
+					Key:     key.(string),
+					Length:  rds.LLen(key.(string)).Val(),
+					ExpTime: expTime,
 				}
-				r := RedisModel.NewListModel(key.(string), rds.LLen(key.(string)).Val(), expTime)
-				listRes = append(listRes, r)
+				commonRes = append(commonRes, c)
 			case "set":
-				exp := rds.TTL(key.(string)).Val()
-				expTime := ""
-				if exp.Seconds() < 0 {
-					expTime = "-"
-				} else {
-					expTime = fmt.Sprintf("%.0f", exp.Seconds())
+				c := &RedisModel.CommonModel{
+					Key:     key.(string),
+					Length:  rds.SCard(key.(string)).Val(),
+					ExpTime: expTime,
 				}
-				r := RedisModel.NewSetModel(key.(string), rds.SCard(key.(string)).Val(), expTime)
-				setRes = append(setRes, r)
+				commonRes = append(commonRes, c)
+			case "hash":
+				c := &RedisModel.CommonModel{
+					Key:     key.(string),
+					Length:  rds.HLen(key.(string)).Val(),
+					ExpTime: expTime,
+				}
+				commonRes = append(commonRes, c)
 			}
 		}
 		return true
 	})
-	if stringRes == nil && listRes == nil && setRes == nil && nextCursor != 0 {
+	if stringRes == nil && commonRes == nil && nextCursor != 0 {
 		cursorInt = int64(nextCursor)
 		goto LABEL
 	}
 
 	if method == "string" {
 		ctx.JSON(200, gin.H{"data": stringRes, "next": nextCursor, "current": cursor})
-	} else if method == "list" {
-		ctx.JSON(200, gin.H{"data": listRes, "next": nextCursor, "current": cursor})
-	} else if method == "set" {
-		ctx.JSON(200, gin.H{"data": setRes, "next": nextCursor, "current": cursor})
+	} else {
+		ctx.JSON(200, gin.H{"data": commonRes, "next": nextCursor, "current": cursor})
 	}
 
 }
@@ -173,7 +172,11 @@ func ListGetByKey(ctx *gin.Context) {
 	data := rds.LRange(key, (pageInt-1)*sizeInt, pageInt*sizeInt+-1).Val()
 	var vms []*RedisModel.ListValueModel
 	for i, v := range data {
-		rm := RedisModel.NewListValueModel(key, v, (pageInt-1)*sizeInt+int64(i))
+		rm := &RedisModel.ListValueModel{
+			Key:   key,
+			Value: v,
+			Index: (pageInt-1)*sizeInt + int64(i),
+		}
 		vms = append(vms, rm)
 	}
 	ctx.JSON(200, gin.H{"data": vms, "len": lLen, "key": key})
@@ -267,6 +270,113 @@ func ListInsert(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(200, gin.H{"message": "插入成功"})
+}
+
+func HashGetByKey(ctx *gin.Context) {
+	key := ctx.Param("key")
+	lLen := rds.HLen(key).Val()
+	page := ctx.DefaultQuery("page", "1")
+	pageInt, _ := strconv.ParseInt(page, 10, 64)
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	size := ctx.DefaultQuery("size", "5")
+	sizeInt, _ := strconv.ParseInt(size, 10, 64)
+	if sizeInt < 1 {
+		sizeInt = 1
+	}
+
+	var result []*RedisModel.HashValueModel
+	res := make(map[string]string)
+	var i int64
+	if lLen >= (pageInt-1)*sizeInt {
+		res = rds.HGetAll(key).Val()
+		for field, value := range res {
+			if i >= (pageInt-1)*sizeInt {
+				s := &RedisModel.HashValueModel{
+					Field: field,
+					Key:   key,
+					Value: value,
+				}
+				result = append(result, s)
+			}
+			i++
+			if i >= pageInt*sizeInt {
+				break
+			}
+		}
+	}
+
+	ctx.JSON(200, gin.H{"data": result, "total": lLen, "key": key})
+}
+
+func HashRemoveValue(ctx *gin.Context) {
+	s := RedisModel.HashValueModel{}
+	err := ctx.ShouldBindJSON(&s)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	err = rds.HDel(s.Key, s.Field).Err()
+	fmt.Println(s)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "删除错误"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "删除成功"})
+}
+
+func HashPost(ctx *gin.Context) {
+	type form struct {
+		Key   string      `json:"key"`
+		Field string      `json:"field"`
+		Value string      `json:"value"`
+		Force bool        `json:"force"`
+		Exp   interface{} `json:"exp"`
+	}
+	f := &form{}
+	err := ctx.ShouldBindJSON(&f)
+	fmt.Println(err)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	t := rds.Type(f.Key).Val()
+	if t != "none" && t != "hash" {
+		ctx.JSON(400, gin.H{"message": "此键存在且不是hash类型，无法添加或修改"})
+		return
+	}
+	fmt.Println(f)
+	if f.Force {
+		err = rds.HSet(f.Key, f.Field, f.Value).Err()
+	} else {
+		b := rds.HSetNX(f.Key, f.Field, f.Value).Val()
+		if !b {
+			ctx.JSON(400, gin.H{"message": "已经存在无法修改"})
+			return
+		}
+	}
+
+	fmt.Println(err)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "添加失败"})
+		return
+	}
+
+	if f.Exp != nil {
+		_, ok := f.Exp.(string)
+		if ok {
+			if f.Exp != "" {
+				expInt, _ := strconv.ParseInt(f.Exp.(string), 10, 64)
+				rds.Expire(f.Key, time.Duration(expInt*int64(math.Pow10(9))))
+			}
+		} else {
+			//expInt, _ := strconv.ParseInt(, 10, 64)
+			rds.Expire(f.Key, time.Duration(int64(f.Exp.(float64))*int64(math.Pow10(9))))
+		}
+	}
+
+	ctx.JSON(200, gin.H{"message": "修改成功"})
 }
 
 func SetGetByKey(ctx *gin.Context) {

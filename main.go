@@ -45,16 +45,22 @@ func main() {
 	{
 		set := r.Group("/set")
 		set.GET("/scan", handlers.Scan)
-
 		set.POST("/", handlers.SetPost)
-
 		set.GET("/get/:key", handlers.SetGetByKey)
-
 		set.DELETE("/:keys", handlers.DelByKeys)
+		set.POST("/remove", handlers.SetRemoveValue)
+		set.POST("/getCommon", handlers.SetGetCommon)
+	}
 
-		set.POST("/remove",handlers.SetRemoveValue)
+	{
+		hash := r.Group("/hash")
 
-		set.POST("/getCommon",handlers.SetGetCommon)
+		hash.GET("/scan", handlers.Scan)
+		hash.DELETE("/:keys", handlers.DelByKeys)
+
+		hash.GET("/get/:key", handlers.HashGetByKey)
+		hash.POST("/remove", handlers.HashRemoveValue)
+		hash.POST("/", handlers.HashPost)
 
 	}
 
@@ -119,7 +125,7 @@ func insertData() {
 				//	fmt.Println(v)
 				m := v.(map[string]interface{})
 
-				k := "set_" + m["id"].(string)
+				k := "hash_" + m["id"].(string)
 				//title := decode.UnicodeToUTF8(m["title"].(string))
 				////fmt.Println(k, title)
 				//desc := decode.UnicodeToUTF8(m["description"].(string))
@@ -139,10 +145,12 @@ func insertData() {
 				//}
 
 				for key, value := range m {
-					dbs.Rds.SAdd(r.Id, fmt.Sprintf("%v:%v", key, value))
+					//dbs.Rds.SAdd(r.Id, fmt.Sprintf("%v:%v", key, value))
+					dbs.Rds.HSet(r.Id, key, value)
 				}
 
 				dbs.Rds.Expire(k, time.Duration(rand.Int63()))
+				//dbs.Rds.Expire(r.Id, time.Duration(1*math.Pow10(9)))
 			}
 		}
 
