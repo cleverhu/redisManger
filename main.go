@@ -53,6 +53,9 @@ func main() {
 		set.DELETE("/:keys", handlers.DelByKeys)
 
 		set.POST("/remove",handlers.SetRemoveValue)
+
+		set.POST("/getCommon",handlers.SetGetCommon)
+
 	}
 
 	{

@@ -296,7 +296,7 @@ func SetGetByKey(ctx *gin.Context) {
 			_, cursor, _ = rds.SScan(key, cursor, "*", sizeInt).Result()
 		}
 
-		fmt.Print(len(res), "-", cursor, "|")
+		//fmt.Print(len(res), "-", cursor, "|")
 		if cursor == 0 {
 			if length == lLen {
 				i--
@@ -304,7 +304,7 @@ func SetGetByKey(ctx *gin.Context) {
 			break
 		}
 	}
-	fmt.Println()
+	//fmt.Println()
 	var result []*RedisModel.SetValueModel
 	for _, v := range res {
 		s := &RedisModel.SetValueModel{
@@ -362,6 +362,28 @@ func SetPost(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, gin.H{"message": "添加成功"})
+}
+
+func SetGetCommon(ctx *gin.Context) {
+	type form struct {
+		Keys   []string `json:"keys"`
+		Method int      `json:"method"`
+	}
+	f := &form{}
+	err := ctx.ShouldBindJSON(&f)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	result := make([]string, 0)
+
+	if f.Method == 0 {
+		result = rds.SInter(f.Keys...).Val()
+	} else {
+		result = rds.SUnion(f.Keys...).Val()
+	}
+
+	ctx.JSON(200, gin.H{"message": "查询成功", "data": result})
 }
 
 func Config(ctx *gin.Context) {
