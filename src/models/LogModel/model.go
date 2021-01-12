@@ -5,7 +5,7 @@ type LogImpl struct {
 	Action  string `json:"action" gorm:"column:action"`
 	Path    string `json:"path" gorm:"column:path"`
 	Method  string `json:"method" gorm:"column:method"`
-	LogTime string `json:"logtime" gorm:"column:logtime"`
+	LogTime string `json:"log_time" gorm:"column:logtime"`
 }
 
 

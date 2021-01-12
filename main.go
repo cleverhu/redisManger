@@ -43,6 +43,19 @@ func main() {
 	}
 
 	{
+		set := r.Group("/set")
+		set.GET("/scan", handlers.Scan)
+
+		set.POST("/", handlers.SetPost)
+
+		set.GET("/get/:key", handlers.SetGetByKey)
+
+		set.DELETE("/:keys", handlers.DelByKeys)
+
+		set.POST("/remove",handlers.SetRemoveValue)
+	}
+
+	{
 		cfg := r.Group("/config")
 		cfg.GET("/", handlers.Config)
 		cfg.POST("/", handlers.UpdateConfig)
@@ -66,8 +79,8 @@ func main() {
 	}
 
 	{
-		logs :=r.Group("logs",handlers.LogsGet)
-		logs.GET("/")
+		logs := r.Group("/logs", handlers.LogsGet)
+		logs.POST("/get")
 	}
 
 	log.Fatal(r.Run(":80"))
@@ -103,7 +116,7 @@ func insertData() {
 				//	fmt.Println(v)
 				m := v.(map[string]interface{})
 
-				k := "list_" + m["id"].(string)
+				k := "set_" + m["id"].(string)
 				//title := decode.UnicodeToUTF8(m["title"].(string))
 				////fmt.Println(k, title)
 				//desc := decode.UnicodeToUTF8(m["description"].(string))
@@ -118,12 +131,13 @@ func insertData() {
 
 				rand.Seed(time.Now().UnixNano())
 				//dbs.Rds.Set(k, string(data), time.Duration(rand.Int63()))
+				//for key, value := range m {
+				//	dbs.Rds.RPush(r.Id, fmt.Sprintf("%v:%v", key, value))
+				//}
+
 				for key, value := range m {
-					dbs.Rds.RPush(r.Id, fmt.Sprintf("%v:%v", key, value))
+					dbs.Rds.SAdd(r.Id, fmt.Sprintf("%v:%v", key, value))
 				}
-				//dbs.Rds.RPush(k, r.Title)
-				//dbs.Rds.RPush(k, r.Description)
-				//dbs.Rds.RPush(k, r.Url)
 
 				dbs.Rds.Expire(k, time.Duration(rand.Int63()))
 			}

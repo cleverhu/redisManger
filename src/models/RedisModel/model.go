@@ -39,3 +39,22 @@ type ListValueModel struct {
 func NewListValueModel(key string, value string, index int64) *ListValueModel {
 	return &ListValueModel{Key: key, Value: value, Index: index}
 }
+
+type SetModel struct {
+	Key     string `json:"key"`
+	Length  int64  `json:"len"`
+	ExpTime string `json:"exp"`
+}
+
+func NewSetModel(key string, length int64, expTime string) *SetModel {
+	return &SetModel{Key: key, Length: length, ExpTime: expTime}
+}
+
+type SetValueModel struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+func NewSetValueModel(key string, value string, index int64) *SetValueModel {
+	return &SetValueModel{Key: key, Value: value}
+}

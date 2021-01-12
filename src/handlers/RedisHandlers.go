@@ -31,7 +31,7 @@ func init() {
 
 func Scan(ctx *gin.Context) {
 	method := strings.ToLower(ctx.DefaultQuery("method", ""))
-	if method != "string" && method != "list" {
+	if method != "string" && method != "list" && method != "set" {
 		ctx.JSON(400, gin.H{"message": "search error"})
 		return
 	}
@@ -45,10 +45,12 @@ func Scan(ctx *gin.Context) {
 
 	var stringRes []*RedisModel.StringModel
 	var listRes []*RedisModel.ListModel
+	var setRes []*RedisModel.SetModel
 LABEL:
 	scan := rds.Scan(uint64(cursorInt), "*"+search+"*", sizeInt)
 
 	keys, nextCursor := scan.Val()
+
 	m := &sync.Map{}
 	for _, v := range keys {
 		m.Store(v, "1")
@@ -77,24 +79,33 @@ LABEL:
 				} else {
 					expTime = fmt.Sprintf("%.0f", exp.Seconds())
 				}
-
 				r := RedisModel.NewListModel(key.(string), rds.LLen(key.(string)).Val(), expTime)
 				listRes = append(listRes, r)
+			case "set":
+				exp := rds.TTL(key.(string)).Val()
+				expTime := ""
+				if exp.Seconds() < 0 {
+					expTime = "-"
+				} else {
+					expTime = fmt.Sprintf("%.0f", exp.Seconds())
+				}
+				r := RedisModel.NewSetModel(key.(string), rds.SCard(key.(string)).Val(), expTime)
+				setRes = append(setRes, r)
 			}
 		}
-
 		return true
 	})
-	//fmt.Println(res, nextCursor)
-	if stringRes == nil && listRes == nil && nextCursor != 0 {
+	if stringRes == nil && listRes == nil && setRes == nil && nextCursor != 0 {
 		cursorInt = int64(nextCursor)
 		goto LABEL
 	}
 
 	if method == "string" {
 		ctx.JSON(200, gin.H{"data": stringRes, "next": nextCursor, "current": cursor})
-	} else {
+	} else if method == "list" {
 		ctx.JSON(200, gin.H{"data": listRes, "next": nextCursor, "current": cursor})
+	} else if method == "set" {
+		ctx.JSON(200, gin.H{"data": setRes, "next": nextCursor, "current": cursor})
 	}
 
 }
@@ -105,28 +116,44 @@ func DelByKeys(ctx *gin.Context) {
 	for i := 0; i < len(s); i++ {
 		rds.Del(s[i])
 	}
-	ctx.JSON(200, gin.H{"message": "success"})
+	ctx.JSON(200, gin.H{"message": "删除成功"})
 }
 
 func StringUpdate(ctx *gin.Context) {
 	type form struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
-		Exp   string `json:"exp"`
+		Key   string      `json:"key"`
+		Value string      `json:"value"`
+		Exp   interface{} `json:"exp"`
 	}
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
-	expInt, _ := strconv.ParseInt(f.Exp, 10, 64)
+
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "fail"})
+		ctx.JSON(400, gin.H{"message": "输入错误"})
 		return
 	}
+	t := rds.Type(f.Key).Val()
+
+	if t != "none" && t != "string" {
+		ctx.JSON(400, gin.H{"message": "修改失败key已经存在且不是string类型无法添加"})
+		return
+	}
+
+	var expInt int64
+	switch f.Exp.(type) {
+	case string:
+		expInt, _ = strconv.ParseInt(f.Exp.(string), 10, 64)
+	case int:
+		fmt.Printf("%T", f.Exp)
+		expInt = int64(f.Exp.(int))
+	}
+
 	err = rds.Set(f.Key, f.Value, time.Duration(expInt*int64(math.Pow10(9)))).Err()
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "fail"})
+		ctx.JSON(400, gin.H{"message": "赋值失败"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "success"})
+	ctx.JSON(200, gin.H{"message": "添加成功"})
 
 }
 
@@ -161,9 +188,8 @@ func ListPost(ctx *gin.Context) {
 	}
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
-	fmt.Println(f, err)
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "fail"})
+		ctx.JSON(400, gin.H{"message": "输入错误"})
 		return
 	}
 	if f.Exists {
@@ -171,8 +197,9 @@ func ListPost(ctx *gin.Context) {
 	}
 
 	err = rds.LPush(f.Key, f.Value).Err()
+
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "fail"})
+		ctx.JSON(400, gin.H{"message": "添加失败"})
 		return
 	}
 	if f.Exp != "" {
@@ -180,11 +207,10 @@ func ListPost(ctx *gin.Context) {
 		rds.Expire(f.Key, time.Duration(expInt*int64(math.Pow10(9))))
 	}
 
-	ctx.JSON(200, gin.H{"message": "success"})
+	ctx.JSON(200, gin.H{"message": "添加成功"})
 }
 
 func ListExists(ctx *gin.Context) {
-	//1 不存在可以修改 0 存在需要覆盖 -1 不能修改
 	key := ctx.Param("key")
 	keys := rds.Keys(key).Val()
 	if len(keys) < 1 {
@@ -199,7 +225,6 @@ func ListExists(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{"result": 0, "message": "此键已经存在，是否选择覆盖？"})
 		return
 	}
-
 }
 
 func ListRemoveValue(ctx *gin.Context) {
@@ -228,7 +253,7 @@ func ListInsert(ctx *gin.Context) {
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
 	if err != nil {
-		ctx.JSON(400, "input error")
+		ctx.JSON(400, "输入错误")
 		return
 	}
 
@@ -238,10 +263,105 @@ func ListInsert(ctx *gin.Context) {
 		err = rds.RPush(f.Key, f.Value).Err()
 	}
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": fmt.Sprintf("insert error :%v\n", err)})
+		ctx.JSON(400, gin.H{"message": "插入错误"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "insert success"})
+	ctx.JSON(200, gin.H{"message": "插入成功"})
+}
+
+func SetGetByKey(ctx *gin.Context) {
+	key := ctx.Param("key")
+	lLen := rds.SCard(key).Val()
+	page := ctx.DefaultQuery("page", "1")
+	pageInt, _ := strconv.ParseInt(page, 10, 64)
+	var cursor uint64
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	size := ctx.DefaultQuery("size", "5")
+	sizeInt, _ := strconv.ParseInt(size, 10, 64)
+	if sizeInt < 1 {
+		sizeInt = 1
+	}
+	var i int64
+
+	res := make([]string, 0)
+	var length int64
+	for true {
+		i++
+		if i <= pageInt {
+			res, cursor, _ = rds.SScan(key, cursor, "*", sizeInt).Result()
+			length += int64(len(res))
+		} else {
+			_, cursor, _ = rds.SScan(key, cursor, "*", sizeInt).Result()
+		}
+
+		fmt.Print(len(res), "-", cursor, "|")
+		if cursor == 0 {
+			if length == lLen {
+				i--
+			}
+			break
+		}
+	}
+	fmt.Println()
+	var result []*RedisModel.SetValueModel
+	for _, v := range res {
+		s := &RedisModel.SetValueModel{
+			Key:   key,
+			Value: v,
+		}
+		result = append(result, s)
+	}
+
+	ctx.JSON(200, gin.H{"data": result, "total": lLen, "key": key, "total_page": i})
+}
+
+func SetRemoveValue(ctx *gin.Context) {
+	s := RedisModel.SetValueModel{}
+	err := ctx.ShouldBindJSON(&s)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	err = rds.SRem(s.Key, s.Value).Err()
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "删除错误"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "删除成功"})
+}
+
+func SetPost(ctx *gin.Context) {
+	type form struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+		Exp   string `json:"exp"`
+	}
+	f := &form{}
+	err := ctx.ShouldBindJSON(&f)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	t := rds.Type(f.Key).Val()
+	if t != "none" && t != "set" {
+		ctx.JSON(400, gin.H{"message": "此键存在且不是set类型，无法添加"})
+		return
+	}
+	err = rds.SAdd(f.Key, f.Value).Err()
+	fmt.Println(err)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "添加失败"})
+		return
+	}
+
+	if f.Exp != "" {
+		expInt, _ := strconv.ParseInt(f.Exp, 10, 64)
+		rds.Expire(f.Key, time.Duration(expInt*int64(math.Pow10(9))))
+	}
+
+	ctx.JSON(200, gin.H{"message": "添加成功"})
 }
 
 func Config(ctx *gin.Context) {
@@ -273,7 +393,7 @@ func UpdateConfig(ctx *gin.Context) {
 	r := RedisConfigModel.NewUpdateRedisRequest()
 	err := ctx.ShouldBindJSON(r)
 	if err != nil {
-		ctx.JSON(200, gin.H{"message": "request content is wrong!"})
+		ctx.JSON(200, gin.H{"message": "输入错误"})
 		return
 	}
 	err = rds.ConfigSet(r.Key, r.Value).Err()
@@ -291,12 +411,11 @@ func UpdateConfig(ctx *gin.Context) {
 
 	}
 
-	ctx.JSON(200, gin.H{"message": "success"})
+	ctx.JSON(200, gin.H{"message": "修改成功"})
 
 }
 
 func Info(ctx *gin.Context) {
-
 	str := rds.Info().Val()
 	ret := InfoModel.GetInfo(str)
 	ctx.JSON(200, ret)
@@ -307,23 +426,23 @@ func Login(ctx *gin.Context) {
 	err := ctx.ShouldBindJSON(&user)
 	fmt.Println(user, err)
 	if err != nil {
-		ctx.JSON(200, gin.H{"message": "输入信息有误", "code": 400})
+		ctx.JSON(400, gin.H{"message": "输入信息有误"})
 		return
 	}
 	orm.Table("users").Raw("select * from users where password = ? and username = ?", user.Username, user.Password).First(&user)
 	if user.ID == 0 {
-		ctx.JSON(200, gin.H{"message": "账号或者密码有错", "code": 400})
+		ctx.JSON(400, gin.H{"message": "账号或者密码有错"})
 		return
 	}
 	orm.Table("users").Exec("update users set update_time = ? where id = ?", time.Now(), user.ID)
 	token, err := common.ReleaseToken(user)
 	if err != nil {
-		ctx.JSON(200, gin.H{"message": "token release fail", "code": 400})
+		ctx.JSON(400, gin.H{"message": "token发放失败"})
 		return
 	}
 
 	orm.Table("user_log").Exec("insert into user_log (uid,aid,path,method,logtime) values (?,?,?,?,?)", user.ID, common.USER, ctx.Request.URL.Path, ctx.Request.Method, time.Now())
-	ctx.JSON(200, gin.H{"message": "login success", "code": 200, "token": token})
+	ctx.JSON(200, gin.H{"message": "登录成功", "token": token})
 }
 
 func Validate(ctx *gin.Context) {
@@ -335,7 +454,7 @@ func Validate(ctx *gin.Context) {
 	_ = ctx.ShouldBindJSON(&f)
 	_, claims, err := common.ParseToken(f.Token)
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "unValidate token"})
+		ctx.JSON(400, gin.H{"message": "不合法的token"})
 		return
 	}
 	f.Username = claims.UserName
@@ -355,7 +474,7 @@ func ConnectTest(ctx *gin.Context) {
 	err := ctx.ShouldBindJSON(&f)
 	fmt.Println(f)
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "connect fail"})
+		ctx.JSON(400, gin.H{"message": "连接失败"})
 		return
 	}
 	//
@@ -364,10 +483,10 @@ func ConnectTest(ctx *gin.Context) {
 	err = client.Ping().Err()
 	fmt.Println(err)
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "connect fail"})
+		ctx.JSON(400, gin.H{"message": "连接失败"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "connect success"})
+	ctx.JSON(200, gin.H{"message": "连接成功"})
 }
 
 func ConnectSave(ctx *gin.Context) {
@@ -382,7 +501,7 @@ func ConnectSave(ctx *gin.Context) {
 	err := ctx.ShouldBindJSON(&f)
 	//fmt.Println(f)
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "input error"})
+		ctx.JSON(400, gin.H{"message": "输入错误"})
 		return
 	}
 	token := ctx.Request.Header.Get("Token")
@@ -394,10 +513,10 @@ func ConnectSave(ctx *gin.Context) {
 	orm.Table("user_redis_info").Exec("delete from user_redis_info  where uid = ?", id)
 	err = orm.Table("user_redis_info").Exec("insert into user_redis_info (uid,host,port,password,db) values (?,?,?,?,?)", id, f.Host, f.Port, f.Password, f.DB).Error
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "save fail"})
+		ctx.JSON(400, gin.H{"message": "保存失败"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "save success"})
+	ctx.JSON(200, gin.H{"message": "保存成功"})
 }
 
 func ConnectGet(ctx *gin.Context) {
@@ -426,15 +545,27 @@ func LogsGet(ctx *gin.Context) {
 	err := ctx.ShouldBindJSON(&f)
 
 	if err != nil {
-		ctx.JSON(400, gin.H{"message": "input error"})
+		ctx.JSON(400, gin.H{"message": "输入错误"})
 		return
 	}
+	fmt.Println(f)
 	type result struct {
-		Logs  []*LogModel.LogImpl
-		Total int64 `json:"total"`
+		Logs  []*LogModel.LogImpl `json:"logs"`
+		Total int64               `json:"total"`
 	}
+	total := &struct {
+		Total int64 `json:"total"`
+	}{}
+	var logs []*LogModel.LogImpl
+
+	token := ctx.Request.Header.Get("Token")
+	_, claims, _ := common.ParseToken(token)
+
 	res := &result{}
-	orm.Raw("select count(*) FROM user_log LEFT JOIN actions on user_log.aid = actions.id").Find(&res.Total)
-	orm.Raw("select uid,action,path,method,logtime FROM user_log LEFT JOIN actions on user_log.aid = actions.id limit ?,?", (f.Page-1)*f.Size, f.Size).Find(&res.Total)
-	ctx.JSON(200, gin.H{"message": "query success", "result": res})
+	orm.Raw("select count(*) as total FROM user_log LEFT JOIN actions on user_log.aid = actions.id where uid = ? and (action like '%"+f.Search+"%' or path like '%"+f.Search+"%')", claims.UserId).Find(&total)
+	res.Total = total.Total
+
+	orm.Raw("select uid,action,path,method,logtime FROM user_log LEFT JOIN actions on user_log.aid = actions.id where uid = ? and (action like '%"+f.Search+"%' or path like '%"+f.Search+"%') order by logtime desc limit ?,? ", claims.UserId, (f.Page-1)*f.Size, f.Size).Find(&logs)
+	res.Logs = logs
+	ctx.JSON(200, gin.H{"message": "查询成功", "result": res})
 }
