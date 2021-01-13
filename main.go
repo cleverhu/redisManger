@@ -15,11 +15,32 @@ import (
 
 func main() {
 	//
+	//nameStr := "Paul|Small|Dale|Daley|Gabriel|Jack|Godly|Maddox|Beneficient|Samson|Vance|Thresher|Paxton|Dalton|Gale|Jacob|Conqueror|Magnus|Great|Samuel|Vaughan|Percival|Percy|Damon|Galvin|Sparrow|James|Jimmy|Supplanter|Malcolm|Scott|Vernon|Flourishing|Perry|Daniel|Gardner|Gardener|Jarvis|Melvin|Servant|Sean|Victor|Peter|Darcy|Dark|Garret|Jason|Marcus|Warlike|Sebastian|Majestic|Vincent|Victorious|Peyton|Darian|Wealthy|Garrick|Jasper|Mark|Marc|Seth|Wallace|Stranger|Philbert|Darell|Darrel|Beloved|Garth|Herdsman|Jed|Marlon|Falcon|Seymour|Walter|Philip|David|Swift|Nimble|Gavin|Jeffrey|Martin|Shamus|Walton|Phineas|Davin|George|Farmer|Jeremiah|Jeremy|Exalted|Marvin|Sea|Shawn|Ward|Guardian|Pierce|Dean|Gerald|Gerard|Gerret|Jerome|Matthew|Shelley|Articulate|Warren|Quade|Fourth|Declan|Gideon|Jesse|Maurice|Sherard|Washington|Quenby|Delmar|Mariner|Gifford|Gift-Brave|John|Max|Maxwell|Sheridan|Wayne|Quillan|Cub|Denley|Gilbert|Pledge|Jonathan|Medwin|Sherlock|Fair-Haired|Wesley|Quimby|Dennis|Giles|Joseph|Joey|Joe|Melville|Sherman|Wilbur|Quentin|Derek|Gilroy|Joshua|Merlin|Bird|Sherwin|Willard|Quinby|Dermot|Glenn|Valley|Justin|Just|Michael|Sidney|Earthy|William|Will|Quincy|Derwin|Goddard|Kane|Honor|Milburn|Sigmund|Willis|Quinlan|Strong|Des|Desmond|Godfrey|Keene|Sharp|Miles|Soldier|Silas|Winston|Quinn|Dexter|Dexterous|Godwin|Keegan|Fiery|Monroe|Simon|Winthrop|Ralph|Dillon|Faithful|Graham|Keaton|Montague|Sinclair|Wyatt|Guide|Ramsey|Dion|Grant|Keith|Forest|Montgomery|Mountain|Sloane|Warrior|Wylie|Beguiling|Randolph|Dirk|Grayson|Kelsey|Morgan|Solomon|Peaceful|Wyman|Raymond|Dixon|Gregory|Kelvin|Morris|Moorish|Spencer|Steward|Zachariah|Reginald|Power|Dominic|Gresham|Kendall|Morton|Stacy|Zachary|Renfred|Peacemaker|Donald|Ruler|Griswald|Griswold|Kendrick|Murray|Seaman|Stanley|Stan|Zebadiah|Rex|King|Dorian|Grover|Kenneth|Ken|Handsome|Nathaniel|Nathan|Stephen|Stefan|Crown|Zane|Rhett|Stream|Douglas|Guy|Kent|Neal|Champion|Sterling|Zebediah|Richard|Doyle|Hadden|Kenway|Neville|Stewart|Stuart|Ridley|Drake|Dragon|Hadley|Kenyon|Nicholas|Theobold|Patriotic|Riley|Valiant|Drew|Trustworthy|Hadwin|Kerry|Nigel|Black|Theodore|Robert|Robin|Driscoll|Interpreter|Hal|Kerwin|Noel|Thomas|Dependable|Roderick|Dudley|Halbert|Kevin|Norman|Norseman|Timothy|Rodney|Famous|Duncan|Halden|Half-Dane|Kiefer|Norris|Caretaker|Titus|Roger|Durwin|Hale|Robust|Kilby|Olaf|Relic|Tobias|Roland|Dwayne|Hall|Kilian|Blind|Olin|Holly|Toby|Rolf|Wolf|Dwight|Halsey|Kim|Chief|Oliver|Todd|Fox|Ronald|Dylan|Loyal|Hamlin|Kimball|Orson|Tony|Rory|Earl|Nobleman|Hanley|Kingsley|Oscar|Travis|Travers|Ross|Wood|Eaton|Hardy|Kirby|Oswald|Trent|Torrent|Roswell|Ebenezer|Harlan|Harland|Kirk|Church|Otis|Trevor|Roy|Edan|Harley|Kit|Owen|Well-Born|Tristan|Sorrowful|Royce|Kingly|Edgar|Harold|Harry|Kody|Helpful|Troy|Rufus|Red-Haired|Edric|Harris|Harrison|Konrad|Truman|Rupert|Edmond|Edmund|Hartley|Kurt|Tyler|Russell|Red|Edward|Eddie|Heath|Heathcliff|Kyle|Udolf|Ryan|Edwin|Hector|Steadfast|Lambert|Unwin|Nonfriend|Efrain|Henry|Lamont|Lawyer|Uriah|Egan|Ardent|Herbert|Lancelot|Land|Egbert|Herman|Landon|Owner|Egerton|Homer|Landry|Egil|Horace|Horatio|Timekeeper|Lane|Elbert|Howard|Lars|Eldon|Respected|Hubert|Laurence|Eldwin|Hugh|Hugo|Fire|Lee|Meadow|Eli|Ely|Elijah|Humphrey|Leith|Wide|Elias|Hunter|Leonard|Leo|Leon|Eliot|Elliott|Ian|Leroy|Ellery|Cheerful|Igor|Leslie|Elmer|Awe-Inspiring|Irvin|Irving|Lester|Elroy|Royal|Isaac|Laughter|Lincoln|Elton|Isaiah|Lionel|Lion-like|Elvis|Ivan|Lloyd|Grey|Emerson|Emery|Industrious|Iver|Ivar|Archer|Logan|Emmanuel|God-like|Ives|Lombard|Long-Beard|Emmett|Louis|Lewis|Emrick|Immortal|Lowell|Enoch|Lucas|Luke|Luminous|Eric|Erik|Luther|Ernest|Vigour|Lyndon|Errol|Erskine|Erwin|Esmond|Ethan|Ethanael|Constant|Firm|Ethen|Endurance|Eugene|Evan|Everett|Ezra|Fabian|Fairfax|Falkner|Farley|Farrell|Felix|Prosperous|Fenton|Ferdinand|Fergal|Fergus|Ferguson|Ferris|Finbar|Fitzgerald|Fleming|Fletcher|Floyd|Forbes|Forrest|Woodsman|Foster|Cunning|Francis|Free|Frank|Frasier|Strawberry|Frederick|Freeman"
+	//names := strings.Split(nameStr, "|")
+	//for i := 0; i < 100; i++ {
+	//	rand.Seed(time.Now().UnixNano())
+	//	dbs.Rds.ZAdd("salary", redis.Z{
+	//		Score:  float64(100 * (rand.Intn(100) + 3000)),
+	//		Member: names[rand.Intn(len(names))],
+	//	})
+	//	dbs.Rds.ZAdd("age", redis.Z{
+	//		Score:  float64(rand.Intn(40) + 18),
+	//		Member: names[rand.Intn(len(names))],
+	//	})
+	//
+	//}
+	//return
 	//insertData()
 	//return
 	r := gin.New()
 	r.Use(common.Cors())
 	r.Use(common.Auth())
+
+	{
+		com := r.Group("/common")
+		com.POST("/toFile", handlers.CommonToFile)
+		com.POST("/toMySql", handlers.CommonInsertToMySql)
+	}
 
 	{
 		str := r.Group("/string")
@@ -46,10 +67,13 @@ func main() {
 
 	{
 		set := r.Group("/set")
+
 		set.GET("/scan", handlers.Scan)
-		set.POST("/", handlers.SetPost)
-		set.GET("/get/:key", handlers.SetGetByKey)
 		set.DELETE("/:keys", handlers.DelByKeys)
+		set.POST("/", handlers.SetPost)
+
+		set.GET("/get/:key", handlers.SetGetByKey)
+
 		set.POST("/remove", handlers.SetRemoveValue)
 		set.POST("/getCommon", handlers.SetGetCommon)
 	}
@@ -63,6 +87,33 @@ func main() {
 		hash.GET("/get/:key", handlers.HashGetByKey)
 		hash.POST("/remove", handlers.HashRemoveValue)
 		hash.POST("/", handlers.HashPost)
+
+	}
+
+	{
+		sortedSet := r.Group("/sortedSet")
+
+		sortedSet.GET("/scan", handlers.Scan)
+		sortedSet.DELETE("/:keys", handlers.DelByKeys)
+
+		sortedSet.GET("/get/:key", handlers.ZSetGetByKey)
+
+		sortedSet.POST("/", handlers.ZSetPost)
+		sortedSet.POST("/remove", handlers.ZSetRemoveValue)
+	}
+
+	{
+		geo := r.Group("/geo")
+		geo.GET("/scan", handlers.Scan)
+
+		geo.DELETE("/:keys", handlers.DelByKeys)
+
+		geo.POST("/", handlers.GEOPost)
+	}
+
+	{
+		bitmap := r.Group("/bitmap")
+		bitmap.GET("/scan", handlers.Scan)
 
 	}
 

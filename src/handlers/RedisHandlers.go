@@ -16,6 +16,7 @@ import (
 	"redisManger/src/models/LoginUserModel"
 	"redisManger/src/models/RedisConfigModel"
 	"redisManger/src/models/RedisModel"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,8 +33,10 @@ func init() {
 }
 
 func Scan(ctx *gin.Context) {
+
+	//rds.SetBit()
 	method := strings.ToLower(ctx.DefaultQuery("method", ""))
-	if method != "string" && method != "list" && method != "hash" && method != "set" {
+	if method != "string" && method != "list" && method != "hash" && method != "set" && method != "zset" && method != "bitmap" {
 		ctx.JSON(400, gin.H{"message": "search error"})
 		return
 	}
@@ -47,7 +50,6 @@ func Scan(ctx *gin.Context) {
 
 	var stringRes []*RedisModel.StringModel
 	var commonRes []*RedisModel.CommonModel
-
 LABEL:
 	scan := rds.Scan(uint64(cursorInt), "*"+search+"*", sizeInt)
 
@@ -71,6 +73,9 @@ LABEL:
 		if t == method {
 			switch t {
 			case "string":
+				//v := rds.Get(key.(string)).Val()
+				//fmt.Println(strings.TrimSpace(v))
+				//fmt.Println(strings.TrimSpace(v) == "")//可以疑似区分bitmap
 				r := RedisModel.NewStringModel(key.(string), rds.Get(key.(string)).Val(), expTime)
 				stringRes = append(stringRes, r)
 			case "list":
@@ -91,6 +96,19 @@ LABEL:
 				c := &RedisModel.CommonModel{
 					Key:     key.(string),
 					Length:  rds.HLen(key.(string)).Val(),
+					ExpTime: expTime,
+				}
+				commonRes = append(commonRes, c)
+			case "zset":
+				c := &RedisModel.CommonModel{
+					Key:     key.(string),
+					Length:  rds.ZCard(key.(string)).Val(),
+					ExpTime: expTime,
+				}
+				commonRes = append(commonRes, c)
+			case "geo":
+				c := &RedisModel.CommonModel{
+					Key:     key.(string),
 					ExpTime: expTime,
 				}
 				commonRes = append(commonRes, c)
@@ -122,9 +140,9 @@ func DelByKeys(ctx *gin.Context) {
 
 func StringUpdate(ctx *gin.Context) {
 	type form struct {
-		Key   string      `json:"key"`
-		Value string      `json:"value"`
-		Exp   interface{} `json:"exp"`
+		Key   string  `json:"key"`
+		Value string  `json:"value"`
+		Exp   float64 `json:"exp"`
 	}
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
@@ -140,16 +158,7 @@ func StringUpdate(ctx *gin.Context) {
 		return
 	}
 
-	var expInt int64
-	switch f.Exp.(type) {
-	case string:
-		expInt, _ = strconv.ParseInt(f.Exp.(string), 10, 64)
-	case int:
-		fmt.Printf("%T", f.Exp)
-		expInt = int64(f.Exp.(int))
-	}
-
-	err = rds.Set(f.Key, f.Value, time.Duration(expInt*int64(math.Pow10(9)))).Err()
+	err = rds.Set(f.Key, f.Value, time.Duration(int64(f.Exp)*int64(math.Pow10(9)))).Err()
 	if err != nil {
 		ctx.JSON(400, gin.H{"message": "赋值失败"})
 		return
@@ -167,6 +176,7 @@ func ToFile(ctx *gin.Context) {
 	for true {
 
 		result, cursor, err = rds.Scan(cursor, "*", 100).Result()
+		fmt.Println(err)
 		if err != nil {
 			ctx.JSON(400, gin.H{"message": "导出失败"})
 			return
@@ -174,7 +184,108 @@ func ToFile(ctx *gin.Context) {
 
 		for _, v := range result {
 			if rds.Type(v).Val() == "string" {
-				m.Store(v, rds.Get(v))
+				m.Store(v, rds.Get(v).Val())
+			}
+		}
+
+		if cursor == 0 {
+			break
+		}
+	}
+	token := ctx.Request.Header.Get("Token")
+	_, claims, _ := common.ParseToken(token)
+	f := excelize.NewFile()
+	_ = f.SetCellValue("Sheet1", "A1", "key")
+	_ = f.SetCellValue("Sheet1", "B1", "value")
+	var i = 2
+	m.Range(func(key, value interface{}) bool {
+		_ = f.SetCellValue("Sheet1", "A"+fmt.Sprintf("%d", i), key)
+		_ = f.SetCellValue("Sheet1", "B"+fmt.Sprintf("%d", i), value)
+		i++
+		return true
+	})
+	fileName := claims.UserName + "_" + time.Now().Format("2006-01-02-15:04:05导出string记录") + ".xlsx"
+	err = f.SaveAs("./files/" + fileName)
+	fmt.Println(err)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "导出失败"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://m.deeplythink.com/excels/" + fileName}})
+}
+
+func CommonToFile(ctx *gin.Context) {
+	type form struct {
+		KeyAxis   string `json:"keyAxis"`
+		KeyName   string `json:"keyName"`
+		ValueAxis string `json:"valueAxis"`
+		ValueName string `json:"valueName"`
+		SheetName string `json:"sheetName"`
+	}
+	myForm := &form{}
+	err := ctx.ShouldBindJSON(myForm)
+	fmt.Println(myForm)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "导出失败"})
+		fmt.Println(err)
+		return
+	}
+
+	type cell struct {
+		name  string
+		index int64
+	}
+	k := &cell{
+		name:  "",
+		index: 0,
+	}
+	v := &cell{
+		name:  "",
+		index: 0,
+	}
+
+	c := regexp.MustCompile(`([A-Z]+)([0-9]+)`)
+
+	if c.MatchString(myForm.KeyAxis) {
+		matches := c.FindStringSubmatch(myForm.KeyAxis)
+		k.name = matches[1]
+		k.index, _ = strconv.ParseInt(matches[2], 10, 64)
+		if k.index < 1 {
+			k.index = 1
+		}
+	} else {
+		ctx.JSON(400, gin.H{"message": "导出失败"})
+		return
+	}
+
+	if c.MatchString(myForm.ValueAxis) {
+		matches := c.FindStringSubmatch(myForm.ValueAxis)
+		v.name = matches[1]
+		v.index, _ = strconv.ParseInt(matches[2], 10, 64)
+		if v.index < 1 {
+			v.index = 1
+		}
+	} else {
+		ctx.JSON(400, gin.H{"message": "导出失败"})
+		return
+	}
+
+	m := sync.Map{}
+	var cursor uint64
+	var result = make([]string, 0)
+
+	for true {
+
+		result, cursor, err = rds.Scan(cursor, "*", 100).Result()
+		fmt.Println(err)
+		if err != nil {
+			ctx.JSON(400, gin.H{"message": "导出失败"})
+			return
+		}
+
+		for _, v := range result {
+			if rds.Type(v).Val() == "string" {
+				m.Store(v, rds.Get(v).Val())
 			}
 		}
 
@@ -183,23 +294,87 @@ func ToFile(ctx *gin.Context) {
 		}
 	}
 
+	token := ctx.Request.Header.Get("Token")
+	_, claims, _ := common.ParseToken(token)
 	f := excelize.NewFile()
-	_ = f.SetCellValue("Sheet1", "A1", "key")
-	_ = f.SetCellValue("Sheet1", "B1", "value")
-	var i = 2
+	_ = f.SetCellValue(myForm.SheetName, k.name+fmt.Sprintf("%d", k.index), myForm.KeyName)
+	_ = f.SetCellValue(myForm.SheetName, v.name+fmt.Sprintf("%d", v.index), myForm.ValueName)
+
 	m.Range(func(key, value interface{}) bool {
-		_ = f.SetCellValue("Sheet1", "A"+fmt.Sprintf("%d", i), value)
-		_ = f.SetCellValue("Sheet1", "B"+fmt.Sprintf("%d", i), value)
-		i++
+		k.index++
+		v.index++
+		_ = f.SetCellValue(myForm.SheetName, k.name+fmt.Sprintf("%d", k.index), key)
+		_ = f.SetCellValue(myForm.SheetName, v.name+fmt.Sprintf("%d", v.index), value)
+
 		return true
 	})
-	fileName := time.Now().Format("2006-01-02_15:04:05_string导出记录") + ".xlsx"
-	err = f.SaveAs("/home/admin/mynginx/html/excels/" + fileName)
+	fileName := claims.UserName + "_" + time.Now().Format("2006-01-02-15:04:05导出string记录") + ".xlsx"
+	err = f.SaveAs("./files/" + fileName)
+	fmt.Println(err)
 	if err != nil {
 		ctx.JSON(400, gin.H{"message": "导出失败"})
 		return
 	}
 	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://m.deeplythink.com/excels/" + fileName}})
+}
+
+func CommonInsertToMySql(ctx *gin.Context) {
+	type form struct {
+		Dns           string `json:"dns"`
+		TableName     string `json:"tableName"`
+		ColumnOfKey   string `json:"columnOfKey"`
+		ColumnOfValue string `json:"columnOfValue"`
+	}
+	myForm := &form{}
+	err := ctx.ShouldBindJSON(myForm)
+
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "导出失败,请检查参数"})
+		return
+	}
+
+	db, err := gorm.Open("mysql", myForm.Dns)
+
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "导出失败,连接数据库失败"})
+		return
+	}
+	db.LogMode(true)
+	m := sync.Map{}
+	var cursor uint64
+	var result = make([]string, 0)
+
+	for true {
+		result, cursor, err = rds.Scan(cursor, "*", 100).Result()
+		fmt.Println(err)
+		if err != nil {
+			ctx.JSON(400, gin.H{"message": "导出失败"})
+			return
+		}
+
+		for _, v := range result {
+			if rds.Type(v).Val() == "string" {
+				m.Store(v, rds.Get(v).Val())
+			}
+		}
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	m.Range(func(key, value interface{}) bool {
+		err = db.Table(myForm.TableName).Exec("insert into "+myForm.TableName+" ("+myForm.ColumnOfKey+","+myForm.ColumnOfValue+") values (?,?)", key, value).Error
+		if err != nil {
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "导出失败"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "导出成功"})
 }
 
 func ListGetByKey(ctx *gin.Context) {
@@ -230,10 +405,10 @@ func ListGetByKey(ctx *gin.Context) {
 
 func ListPost(ctx *gin.Context) {
 	type form struct {
-		Key    string `json:"key"`
-		Value  string `json:"value"`
-		Exp    string `json:"exp"`
-		Exists bool   `json:"exist"`
+		Key    string  `json:"key"`
+		Value  string  `json:"value"`
+		Exp    float64 `json:"exp"`
+		Exists bool    `json:"exist"`
 	}
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
@@ -251,9 +426,8 @@ func ListPost(ctx *gin.Context) {
 		ctx.JSON(400, gin.H{"message": "添加失败"})
 		return
 	}
-	if f.Exp != "" {
-		expInt, _ := strconv.ParseInt(f.Exp, 10, 64)
-		rds.Expire(f.Key, time.Duration(expInt*int64(math.Pow10(9))))
+	if f.Exp > 0 {
+		rds.Expire(f.Key, time.Duration(int64(f.Exp)*int64(math.Pow10(9))))
 	}
 
 	ctx.JSON(200, gin.H{"message": "添加成功"})
@@ -374,11 +548,11 @@ func HashRemoveValue(ctx *gin.Context) {
 
 func HashPost(ctx *gin.Context) {
 	type form struct {
-		Key   string      `json:"key"`
-		Field string      `json:"field"`
-		Value string      `json:"value"`
-		Force bool        `json:"force"`
-		Exp   interface{} `json:"exp"`
+		Key   string  `json:"key"`
+		Field string  `json:"field"`
+		Value string  `json:"value"`
+		Force bool    `json:"force"`
+		Exp   float64 `json:"exp"`
 	}
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
@@ -409,17 +583,8 @@ func HashPost(ctx *gin.Context) {
 		return
 	}
 
-	if f.Exp != nil {
-		_, ok := f.Exp.(string)
-		if ok {
-			if f.Exp != "" {
-				expInt, _ := strconv.ParseInt(f.Exp.(string), 10, 64)
-				rds.Expire(f.Key, time.Duration(expInt*int64(math.Pow10(9))))
-			}
-		} else {
-			//expInt, _ := strconv.ParseInt(, 10, 64)
-			rds.Expire(f.Key, time.Duration(int64(f.Exp.(float64))*int64(math.Pow10(9))))
-		}
+	if f.Exp > 0 {
+		rds.Expire(f.Key, time.Duration(int64(f.Exp)*int64(math.Pow10(9))))
 	}
 
 	ctx.JSON(200, gin.H{"message": "修改成功"})
@@ -490,9 +655,9 @@ func SetRemoveValue(ctx *gin.Context) {
 
 func SetPost(ctx *gin.Context) {
 	type form struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
-		Exp   string `json:"exp"`
+		Key   string  `json:"key"`
+		Value string  `json:"value"`
+		Exp   float64 `json:"exp"`
 	}
 	f := &form{}
 	err := ctx.ShouldBindJSON(&f)
@@ -511,10 +676,8 @@ func SetPost(ctx *gin.Context) {
 		ctx.JSON(400, gin.H{"message": "添加失败"})
 		return
 	}
-
-	if f.Exp != "" {
-		expInt, _ := strconv.ParseInt(f.Exp, 10, 64)
-		rds.Expire(f.Key, time.Duration(expInt*int64(math.Pow10(9))))
+	if f.Exp > 0 {
+		rds.Expire(f.Key, time.Duration(int64(f.Exp)*int64(math.Pow10(9))))
 	}
 
 	ctx.JSON(200, gin.H{"message": "添加成功"})
@@ -540,6 +703,134 @@ func SetGetCommon(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, gin.H{"message": "查询成功", "data": result})
+}
+
+func ZSetGetByKey(ctx *gin.Context) {
+	key := ctx.Param("key")
+	lLen := rds.ZCard(key).Val()
+	page := ctx.DefaultQuery("page", "1")
+	pageInt, _ := strconv.ParseInt(page, 10, 64)
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	size := ctx.DefaultQuery("size", "5")
+	sizeInt, _ := strconv.ParseInt(size, 10, 64)
+	if sizeInt < 1 {
+		sizeInt = 1
+	}
+	var result []*RedisModel.ZSetValueModel
+	vals := rds.ZRangeWithScores(key, 0, -1).Val()
+	//fmt.Println(vals)
+	var index int64
+	for _, v := range vals {
+		if index >= (pageInt-1)*sizeInt {
+			r := &RedisModel.ZSetValueModel{
+				Key:    key,
+				Member: v.Member.(string),
+				Score:  v.Score,
+			}
+			result = append(result, r)
+		}
+
+		if len(result) >= int(sizeInt) {
+			break
+		}
+
+		index++
+	}
+	ctx.JSON(200, gin.H{"data": result, "total": lLen, "key": key})
+}
+
+func ZSetPost(ctx *gin.Context) {
+	type form struct {
+		Key    string  `json:"key"`
+		Member string  `json:"member"`
+		Score  float64 `json:"score"`
+		Exp    float64 `json:"exp"`
+	}
+	f := &form{}
+	err := ctx.ShouldBindJSON(&f)
+	fmt.Println(err)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	t := rds.Type(f.Key).Val()
+	if t != "none" && t != "zset" {
+		ctx.JSON(400, gin.H{"message": "此键存在且不是set类型，无法添加"})
+		return
+	}
+	err = rds.ZAdd(f.Key, redis.Z{
+		Score:  f.Score,
+		Member: f.Member,
+	}).Err()
+	fmt.Println(err)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "添加失败"})
+		return
+	}
+
+	if f.Exp > 0 {
+		rds.Expire(f.Key, time.Duration(int64(f.Exp)*int64(math.Pow10(9))))
+	}
+
+	ctx.JSON(200, gin.H{"message": "添加成功"})
+}
+
+func ZSetRemoveValue(ctx *gin.Context) {
+	zs := RedisModel.ZSetValueModel{}
+	err := ctx.ShouldBindJSON(&zs)
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	err = rds.ZRem(zs.Key, zs.Member).Err()
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "删除错误"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "删除成功"})
+}
+
+func GEOPost(ctx *gin.Context) {
+	type form struct {
+		Key       string  `json:"key"`
+		Member    string  `json:"member"`
+		Longitude float64 `json:"longitude"`
+		Latitude  float64 `json:"latitude"`
+		Exp       float64 `json:"exp"`
+	}
+	f := &form{}
+	err := ctx.ShouldBindJSON(&f)
+	fmt.Println(err, f)
+
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "输入错误"})
+		return
+	}
+	t := rds.Type(f.Key).Val()
+	if t != "none" && t != "geo" {
+		ctx.JSON(400, gin.H{"message": "此键存在且不是geo类型，无法添加"})
+		return
+	}
+	err = rds.GeoAdd(f.Key, &redis.GeoLocation{
+		Name:      f.Member,
+		Longitude: f.Longitude,
+		Latitude:  f.Latitude,
+	}).Err()
+
+	if err != nil {
+		ctx.JSON(400, gin.H{"message": "添加失败"})
+		return
+	}
+
+	dbs.Orm.Table("geo").Exec("insert into geo (geo_key,geo_member) values(?,?)", f.Key, f.Member)
+
+	if f.Exp > 0 {
+		rds.Expire(f.Key, time.Duration(int64(f.Exp)*int64(math.Pow10(9))))
+	}
+
+	ctx.JSON(200, gin.H{"message": "添加成功"})
 }
 
 func Config(ctx *gin.Context) {

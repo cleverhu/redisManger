@@ -26,6 +26,13 @@ type CommonModel struct {
 	ExpTime string `json:"exp"`
 }
 
+type GEOModel struct {
+	Key       string `json:"key"`
+	Longitude float64  `json:"Longitude"`
+	Latitude  float64  `json:"Latitude"`
+	ExpTime   string `json:"exp"`
+}
+
 type ListValueModel struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -41,4 +48,10 @@ type HashValueModel struct {
 	Key   string `json:"key"`
 	Field string `json:"field"`
 	Value string `json:"value"`
+}
+
+type ZSetValueModel struct {
+	Key    string  `json:"key"`
+	Member string  `json:"member"`
+	Score  float64 `json:"score"`
 }
