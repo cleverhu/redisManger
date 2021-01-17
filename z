@@ -1,8 +1,11 @@
-sshpass -p 'Hspaiziji!' ssh admin@101.132.107.3 <<end
-docker stop redisManger
+git add .
+git commit -m "auto"
+git push -u origin master
+sshpass -p 'Aa123123' ssh admin@101.132.107.3 <<end
+kubectl delete -f  /home/admin/mydeployments/redis-manger/back.yaml
 end
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o redisManger main.go
-sshpass -p 'Hspaiziji!' scp redisManger admin@101.132.107.3:/home/admin/web/
-sshpass -p 'Hspaiziji!' ssh admin@101.132.107.3 <<end
-docker start redisManger
+sshpass -p 'Aa123123' scp redisManger admin@101.132.107.3:/home/admin/myweb/redis-manger
+sshpass -p 'Aa123123' ssh admin@101.132.107.3 <<end
+kubectl apply -f  /home/admin/mydeployments/redis-manger/back.yaml
 end

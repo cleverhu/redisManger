@@ -42,7 +42,9 @@ func init() {
 
 	//初始化redis
 	t := &T{}
-	file, _ := ioutil.ReadFile("config.yaml")
+	file, err := ioutil.ReadFile("config.yaml")
+	fmt.Println("file_err", err)
+	fmt.Println("file_content", string(file))
 	err = yaml.Unmarshal(file, t)
 
 	if err != nil {
@@ -72,7 +74,7 @@ func init() {
 	//	TLSConfig:          nil,
 	//}
 	Rds = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", t.Redis.Host, t.Redis.Post),
+		Addr:     fmt.Sprintf("%s:%d", "101.132.107.3", 6379),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})

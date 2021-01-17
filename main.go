@@ -141,8 +141,8 @@ func main() {
 	}
 
 	{
-		logs := r.Group("/logs", handlers.LogsGet)
-		logs.POST("/get")
+		logs := r.Group("/logs")
+		logs.POST("/get", handlers.LogsGet)
 	}
 
 	log.Fatal(r.Run(":80"))
