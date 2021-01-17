@@ -35,7 +35,7 @@ func Auth() gin.HandlerFunc {
 
 		path := context.Request.RequestURI
 		method := context.Request.Method
-		if path != "/user/login" && path != "/user/check" {
+		if path != "/user/login" && path != "/user/check" && strings.Index(path, "/files") == -1 {
 			token := context.Request.Header.Get("Token")
 			_, claims, err := ParseToken(token)
 			if err != nil {
