@@ -309,13 +309,13 @@ func CommonToFile(ctx *gin.Context) {
 		return true
 	})
 	fileName := claims.UserName + "_" + time.Now().Format("2006-01-02-15:04:05导出string记录") + ".xlsx"
-	err = f.SaveAs("../../mynginx/html/excels/" + fileName)
+	err = f.SaveAs("./files/" + fileName)
 	fmt.Println(err)
 	if err != nil {
 		ctx.JSON(400, gin.H{"message": "导出失败"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://www.deeplythink.com/excels/" + fileName}})
+	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://redis.deeplythink.com/files/" + fileName}})
 }
 
 func CommonInsertToMySql(ctx *gin.Context) {
