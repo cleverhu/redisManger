@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"math/rand"
+	"net/http"
 	"redisManger/src/common"
 	"redisManger/src/dbs"
 	"redisManger/src/handlers"
@@ -33,6 +34,9 @@ func main() {
 	//insertData()
 	//return
 	r := gin.New()
+
+
+	r.StaticFS("/files", http.Dir("./files"))
 	r.Use(common.Cors())
 	r.Use(common.Auth())
 
