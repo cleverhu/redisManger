@@ -1,171 +1,0 @@
-	notes["# Server"]=""
-	notes["redis_version:6.1.240"]=""
-	notes["redis_git_sha1:00000000"]=""
-	notes["redis_git_dirty:0"]=""
-	notes["redis_build_id:250914bf49e526b5"]=""
-	notes["redis_mode:standalone"]=""
-	notes["os:Linux 3.10.0-957.21.3.el7.x86_64 x86_64"]=""
-	notes["arch_bits:64"]=""
-	notes["multiplexing_api:epoll"]=""
-	notes["atomicvar_api:atomic-builtin"]=""
-	notes["gcc_version:9.3.0"]=""
-	notes["process_id:1"]=""
-	notes["process_supervised:no"]=""
-	notes["run_id:7879d6732d54c0a894ff7a86b69bc5a00dd2242b"]=""
-	notes["tcp_port:6379"]=""
-	notes["server_time_usec:1610218447597692"]=""
-	notes["uptime_in_seconds:4910"]=""
-	notes["uptime_in_days:0"]=""
-	notes["hz:10"]=""
-	notes["configured_hz:10"]=""
-	notes["lru_clock:16382927"]=""
-	notes["executable:/data/redis-server"]=""
-	notes["config_file:/etc/redis/redis.conf"]=""
-	notes["io_threads_active:0"]=""
-	notes[""]=""
-	notes["# Clients"]=""
-	notes["connected_clients:2"]=""
-	notes["cluster_connections:0"]=""
-	notes["maxclients:10000"]=""
-	notes["client_recent_max_input_buffer:16"]=""
-	notes["client_recent_max_output_buffer:0"]=""
-	notes["blocked_clients:0"]=""
-	notes["tracking_clients:0"]=""
-	notes["clients_in_timeout_table:0"]=""
-	notes[""]=""
-	notes["# Memory"]=""
-	notes["used_memory:929912"]=""
-	notes["used_memory_human:908.12K"]=""
-	notes["used_memory_rss:5197824"]=""
-	notes["used_memory_rss_human:4.96M"]=""
-	notes["used_memory_peak:3230976"]=""
-	notes["used_memory_peak_human:3.08M"]=""
-	notes["used_memory_peak_perc:28.78%"]=""
-	notes["used_memory_overhead:838160"]=""
-	notes["used_memory_startup:813464"]=""
-	notes["used_memory_dataset:91752"]=""
-	notes["used_memory_dataset_perc:78.79%"]=""
-	notes["allocator_allocated:1135400"]=""
-	notes["allocator_active:2146304"]=""
-	notes["allocator_resident:6676480"]=""
-	notes["total_system_memory:3823390720"]=""
-	notes["total_system_memory_human:3.56G"]=""
-	notes["used_memory_lua:37888"]=""
-	notes["used_memory_lua_human:37.00K"]=""
-	notes["used_memory_scripts:0"]=""
-	notes["used_memory_scripts_human:0B"]=""
-	notes["number_of_cached_scripts:0"]=""
-	notes["maxmemory:0"]=""
-	notes["maxmemory_human:0B"]=""
-	notes["maxmemory_policy:noeviction"]=""
-	notes["allocator_frag_ratio:1.89"]=""
-	notes["allocator_frag_bytes:1010904"]=""
-	notes["allocator_rss_ratio:3.11"]=""
-	notes["allocator_rss_bytes:4530176"]=""
-	notes["rss_overhead_ratio:0.78"]=""
-	notes["rss_overhead_bytes:-1478656"]=""
-	notes["mem_fragmentation_ratio:6.00"]=""
-	notes["mem_fragmentation_bytes:4331696"]=""
-	notes["mem_not_counted_for_evict:1786"]=""
-	notes["mem_replication_backlog:0"]=""
-	notes["mem_clients_slaves:0"]=""
-	notes["mem_clients_normal:20496"]=""
-	notes["mem_aof_buffer:1792"]=""
-	notes["mem_allocator:jemalloc-5.1.0"]=""
-	notes["active_defrag_running:0"]=""
-	notes["lazyfree_pending_objects:0"]=""
-	notes["lazyfreed_objects:0"]=""
-	notes[""]=""
-	notes["# Persistence"]=""
-	notes["loading:0"]=""
-	notes["rdb_changes_since_last_save:0"]=""
-	notes["rdb_bgsave_in_progress:0"]=""
-	notes["rdb_last_save_time:1610214500"]=""
-	notes["rdb_last_bgsave_status:ok"]=""
-	notes["rdb_last_bgsave_time_sec:0"]=""
-	notes["rdb_current_bgsave_time_sec:-1"]=""
-	notes["rdb_last_cow_size:425984"]=""
-	notes["aof_enabled:1"]=""
-	notes["aof_rewrite_in_progress:0"]=""
-	notes["aof_rewrite_scheduled:0"]=""
-	notes["aof_last_rewrite_time_sec:-1"]=""
-	notes["aof_current_rewrite_time_sec:-1"]=""
-	notes["aof_last_bgrewrite_status:ok"]=""
-	notes["aof_last_write_status:ok"]=""
-	notes["aof_last_cow_size:0"]=""
-	notes["module_fork_in_progress:0"]=""
-	notes["module_fork_last_cow_size:0"]=""
-	notes["aof_current_size:5055143"]=""
-	notes["aof_base_size:5054291"]=""
-	notes["aof_pending_rewrite:0"]=""
-	notes["aof_buffer_length:0"]=""
-	notes["aof_rewrite_buffer_length:0"]=""
-	notes["aof_pending_bio_fsync:0"]=""
-	notes["aof_delayed_fsync:0"]=""
-	notes[""]=""
-	notes["# Stats"]=""
-	notes["total_connections_received:24"]=""
-	notes["total_commands_processed:651"]=""
-	notes["instantaneous_ops_per_sec:0"]=""
-	notes["total_net_input_bytes:19604"]=""
-	notes["total_net_output_bytes:789062"]=""
-	notes["instantaneous_input_kbps:0.00"]=""
-	notes["instantaneous_output_kbps:0.00"]=""
-	notes["rejected_connections:0"]=""
-	notes["sync_full:0"]=""
-	notes["sync_partial_ok:0"]=""
-	notes["sync_partial_err:0"]=""
-	notes["expired_keys:0"]=""
-	notes["expired_stale_perc:0.00"]=""
-	notes["expired_time_cap_reached_count:0"]=""
-	notes["expire_cycle_cpu_milliseconds:68"]=""
-	notes["evicted_keys:0"]=""
-	notes["keyspace_hits:500"]=""
-	notes["keyspace_misses:0"]=""
-	notes["pubsub_channels:0"]=""
-	notes["pubsub_patterns:0"]=""
-	notes["latest_fork_usec:1168"]=""
-	notes["total_forks:2"]=""
-	notes["migrate_cached_sockets:0"]=""
-	notes["slave_expires_tracked_keys:0"]=""
-	notes["active_defrag_hits:0"]=""
-	notes["active_defrag_misses:0"]=""
-	notes["active_defrag_key_hits:0"]=""
-	notes["active_defrag_key_misses:0"]=""
-	notes["tracking_total_keys:0"]=""
-	notes["tracking_total_items:0"]=""
-	notes["tracking_total_prefixes:0"]=""
-	notes["unexpected_error_replies:0"]=""
-	notes["dump_payload_sanitizations:0"]=""
-	notes["total_reads_processed:674"]=""
-	notes["total_writes_processed:1005"]=""
-	notes["io_threaded_reads_processed:0"]=""
-	notes["io_threaded_writes_processed:0"]=""
-	notes[""]=""
-	notes["# Replication"]=""
-	notes["role:master"]=""
-	notes["connected_slaves:0"]=""
-	notes["master_replid:6873e6eef0645ea9d9900e3700ac63d09b546546"]=""
-	notes["master_replid2:0000000000000000000000000000000000000000"]=""
-	notes["master_repl_offset:0"]=""
-	notes["second_repl_offset:-1"]=""
-	notes["repl_backlog_active:0"]=""
-	notes["repl_backlog_size:1048576"]=""
-	notes["repl_backlog_first_byte_offset:0"]=""
-	notes["repl_backlog_histlen:0"]=""
-	notes[""]=""
-	notes["# CPU"]=""
-	notes["used_cpu_sys:7.695945"]=""
-	notes["used_cpu_user:2.697014"]=""
-	notes["used_cpu_sys_children:0.003321"]=""
-	notes["used_cpu_user_children:0.002327"]=""
-	notes["used_cpu_sys_main_thread:7.689612"]=""
-	notes["used_cpu_user_main_thread:2.695524"]=""
-	notes[""]=""
-	notes["# Modules"]=""
-	notes[""]=""
-	notes["# Cluster"]=""
-	notes["cluster_enabled:0"]=""
-	notes[""]=""
-	notes["# Keyspace"]=""
-	notes["db0:keys=30,expires=29,avg_ttl=4624441774377"]=""
