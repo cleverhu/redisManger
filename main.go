@@ -173,8 +173,6 @@ func insertData() {
 
 			}
 		}
-		fmt.Println("=========", i)
-
 	}
 
 	return
