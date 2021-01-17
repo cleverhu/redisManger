@@ -42,7 +42,7 @@ func init() {
 
 	//初始化redis
 	t := &T{}
-	file, err := ioutil.ReadFile("config.yaml")
+	file, err := ioutil.ReadFile("./config.yaml")
 	workDir, _ := os.Getwd()
 	fmt.Println("work_dir:", workDir)
 	fmt.Println("file_err", err)
