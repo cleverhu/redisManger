@@ -35,6 +35,10 @@ func Auth() gin.HandlerFunc {
 
 		path := context.Request.RequestURI
 		method := context.Request.Method
+		if path == "/user/login" {
+			context.Next()
+			return
+		}
 		if path != "/user/login" && path != "/user/check" && strings.Index(path, "/files") == -1 {
 			token := context.Request.Header.Get("Token")
 			_, claims, err := ParseToken(token)
@@ -50,12 +54,9 @@ func Auth() gin.HandlerFunc {
 			goto LABEL
 		}
 		if strings.Index(path, "user") != -1 {
-			//user := LoginUserModel.LoginUser{}
-			//_ = context.ShouldBindJSON(&user)
-			//orm.Table("users").Select("id").Where("username", user.Username).First(&uid)
-			//if uid != 0 {
-			//	orm.Table("user_log").Exec("insert into user_log (uid,aid,path,method,logtime) values (?,?,?,?,?)", uid, USER, path, method, time.Now())
-			//}
+			if uid != 0 {
+				orm.Table("user_log").Exec("insert into user_log (uid,aid,path,method,logtime) values (?,?,?,?,?)", uid, USER, path, method, time.Now())
+			}
 		} else {
 			orm.Table("user_log").Exec("insert into user_log (uid,aid,path,method,logtime) values (?,?,?,?,?)", uid, REDIS, path, method, time.Now())
 		}

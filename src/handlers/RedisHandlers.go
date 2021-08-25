@@ -152,13 +152,13 @@ func StringUpdate(ctx *gin.Context) {
 		return
 	}
 	t := rds.Type(f.Key).Val()
-
-	if t != "none" && t != "string" {
+	if t != "none" && t != "" && t != "string" {
 		ctx.JSON(400, gin.H{"message": "修改失败key已经存在且不是string类型无法添加"})
 		return
 	}
 
 	err = rds.Set(f.Key, f.Value, time.Duration(int64(f.Exp)*int64(math.Pow10(9)))).Err()
+	fmt.Println(err)
 	if err != nil {
 		ctx.JSON(400, gin.H{"message": "赋值失败"})
 		return
@@ -211,7 +211,7 @@ func ToFile(ctx *gin.Context) {
 		ctx.JSON(400, gin.H{"message": "导出失败"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://m.deeplythink.com/excels/" + fileName}})
+	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://" + ctx.Request.Host + "/files/" + fileName}})
 }
 
 func CommonToFile(ctx *gin.Context) {
@@ -315,7 +315,7 @@ func CommonToFile(ctx *gin.Context) {
 		ctx.JSON(400, gin.H{"message": "导出失败"})
 		return
 	}
-	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://redis.deeplythink.com/files/" + fileName}})
+	ctx.JSON(200, gin.H{"message": "导出成功", "data": gin.H{"url": "http://" + ctx.Request.Host + "/files/" + fileName}})
 }
 
 func CommonInsertToMySql(ctx *gin.Context) {
@@ -562,7 +562,7 @@ func HashPost(ctx *gin.Context) {
 		return
 	}
 	t := rds.Type(f.Key).Val()
-	if t != "none" && t != "hash" {
+	if t != "none" && t != "" && t != "hash" {
 		ctx.JSON(400, gin.H{"message": "此键存在且不是hash类型，无法添加或修改"})
 		return
 	}
@@ -666,7 +666,7 @@ func SetPost(ctx *gin.Context) {
 		return
 	}
 	t := rds.Type(f.Key).Val()
-	if t != "none" && t != "set" {
+	if t != "none" && t != "" && t != "set" {
 		ctx.JSON(400, gin.H{"message": "此键存在且不是set类型，无法添加"})
 		return
 	}
@@ -756,7 +756,7 @@ func ZSetPost(ctx *gin.Context) {
 		return
 	}
 	t := rds.Type(f.Key).Val()
-	if t != "none" && t != "zset" {
+	if t != "none" && t != "" && t != "zset" {
 		ctx.JSON(400, gin.H{"message": "此键存在且不是set类型，无法添加"})
 		return
 	}
@@ -809,7 +809,7 @@ func GEOPost(ctx *gin.Context) {
 		return
 	}
 	t := rds.Type(f.Key).Val()
-	if t != "none" && t != "geo" {
+	if t != "none" && t != "" && t != "geo" {
 		ctx.JSON(400, gin.H{"message": "此键存在且不是geo类型，无法添加"})
 		return
 	}
@@ -893,6 +893,9 @@ func Info(ctx *gin.Context) {
 func Login(ctx *gin.Context) {
 	user := LoginUserModel.LoginUser{}
 	err := ctx.ShouldBindJSON(&user)
+	bytes := make([]byte, 1024)
+	fmt.Println(ctx.Request.Body.Read(bytes))
+	fmt.Println(string(bytes))
 	fmt.Println(user, err)
 	if err != nil {
 		ctx.JSON(400, gin.H{"message": "输入信息有误"})
@@ -968,7 +971,6 @@ func ConnectSave(ctx *gin.Context) {
 	f := &form{}
 
 	err := ctx.ShouldBindJSON(&f)
-	//fmt.Println(f)
 	if err != nil {
 		ctx.JSON(400, gin.H{"message": "输入错误"})
 		return
@@ -1017,7 +1019,6 @@ func LogsGet(ctx *gin.Context) {
 		ctx.JSON(400, gin.H{"message": "输入错误"})
 		return
 	}
-	fmt.Println(f)
 	type result struct {
 		Logs  []*LogModel.LogImpl `json:"logs"`
 		Total int64               `json:"total"`
@@ -1034,7 +1035,7 @@ func LogsGet(ctx *gin.Context) {
 	orm.Raw("select count(*) as total FROM user_log LEFT JOIN actions on user_log.aid = actions.id where uid = ? and (action like '%"+f.Search+"%' or path like '%"+f.Search+"%')", claims.UserId).Find(&total)
 	res.Total = total.Total
 
-	orm.Raw("select uid,action,path,method,logtime FROM user_log LEFT JOIN actions on user_log.aid = actions.id where uid = ? and (action like '%"+f.Search+"%' or path like '%"+f.Search+"%') order by logtime desc limit ?,? ", claims.UserId, (f.Page-1)*f.Size, f.Size).Find(&logs)
+	orm.Raw("select uid,actions.action,path,method,logtime FROM user_log LEFT JOIN actions on user_log.aid = actions.id where uid = ? and (actions.action like '%"+f.Search+"%' or path like '%"+f.Search+"%') order by logtime desc limit ?,? ", claims.UserId, (f.Page-1)*f.Size, f.Size).Find(&logs)
 	res.Logs = logs
 	ctx.JSON(200, gin.H{"message": "查询成功", "result": res})
 }

@@ -3,18 +3,23 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"time"
+
 	"redisManger/src/common"
 	"redisManger/src/dbs"
 	"redisManger/src/handlers"
+	_ "redisManger/src/models/ActionModel"
 	"redisManger/src/utils/myHttp"
-	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	os.Mkdir("./files", os.ModePerm)
 	r := gin.New()
 
 	r.StaticFS("/files", http.Dir("./files"))
